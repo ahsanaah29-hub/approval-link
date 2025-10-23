@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoFix Service Approval</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 0;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: #1976D2;
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 0 0 24px 24px;
+        }
+
+        .header-icon {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-size: 30px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .vehicle-badge {
+            background: white;
+            color: #1976D2;
+            padding: 8px 20px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 15px;
+            font-weight: 600;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+        }
+
+        .helper-text {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .repair-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .repair-card.selected {
+            border: 2px solid #1976D2;
+            box-shadow: 0 2px 8px rgba(25, 118, 210, 0.1);
+        }
+
+        .repair-card-content {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .checkbox {
+            width: 24px;
+            height: 24px;
+            border: 2px solid #999;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .repair-card.selected .checkbox {
+            background: #1976D2;
+            border-color: #1976D2;
+        }
+
+        .checkbox::after {
+            content: '✓';
+            color: white;
+            font-size: 16px;
+            display: none;
+        }
+
+        .repair-card.selected .checkbox::after {
+            display: block;
+        }
+
+        .repair-info {
+            flex: 1;
+        }
+
+        .repair-description {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 6px;
+        }
+
+        .repair-tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .tag-customer {
+            background: #e0e0e0;
+            color: #555;
+        }
+
+        .tag-mechanic {
+            background: #FFF4E6;
+            color: #D97706;
+        }
+
+        .repair-price {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1976D2;
+            flex-shrink: 0;
+        }
+
+        .feedback-box {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        textarea {
+            width: 100%;
+            border: none;
+            resize: vertical;
+            min-height: 80px;
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+        }
+
+        textarea::placeholder {
+            color: #999;
+        }
+
+        .total-section {
+            background: white;
+            border: 2px solid #1976D2;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .total-label {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .total-amount {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1976D2;
+        }
+
+        .submit-btn {
+            width: 100%;
+            background: #1976D2;
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background 0.2s;
+            margin-top: 20px;
+        }
+
+        .submit-btn:hover {
+            background: #1565C0;
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px 20px;
+            color: #666;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px;
+        }
+
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 20px;
+        }
+
+        .success-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="app">
+        <div class="loading">Loading...</div>
+    </div>
+
+    <script>
+        // TODO: Replace with your actual Supabase credentials
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let jobData = null;
+        let selectedComplaints = new Set();
+        let selectedSuggestions = new Set();
+
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const jobCardId = urlParams.get('id');
+        const token = urlParams.get('token');
+
+        async function loadJobData() {
+            if (!jobCardId || !token) {
+                showError('Invalid link. Missing job ID or token.');
+                return;
+            }
+
+            try {
+                const { data, error } = await supabase
+                    .from('job_cards')
+                    .select(`
+                        id, job_number, approval_link_token,
+                        vehicles (
+                            registration_number,
+                            client_name,
+                            brands ( name ),
+                            models ( name )
+                        ),
+                        complaints ( id, description, estimated_cost, is_approved_by_customer ),
+                        suggestions ( id, description, estimated_cost, is_approved_by_customer )
+                    `)
+                    .eq('id', jobCardId)
+                    .single();
+
+                if (error) throw error;
+
+                // Verify token
+                if (data.approval_link_token !== token) {
+                    showError('Invalid or expired approval link.');
+                    return;
+                }
+
+                jobData = data;
+
+                // Pre-select already approved items
+                data.complaints?.forEach(c => {
+                    if (c.is_approved_by_customer) selectedComplaints.add(c.id);
+                });
+                data.suggestions?.forEach(s => {
+                    if (s.is_approved_by_customer) selectedSuggestions.add(s.id);
+                });
+
+                renderUI();
+            } catch (error) {
+                showError('Error loading data: ' + error.message);
+            }
+        }
+
+        function renderUI() {
+            const vehicle = jobData.vehicles;
+            const complaints = jobData.complaints || [];
+            const suggestions = jobData.suggestions || [];
+            const allItems = [
+                ...complaints.map(c => ({ ...c, type: 'complaint', label: 'Your Request' })),
+                ...suggestions.map(s => ({ ...s, type: 'suggestion', label: 'Mechanic Suggestion' }))
+            ];
+
+            const html = `
+                <div class="header">
+                    <div class="header-icon">🚗</div>
+                    <h1>AutoFix Service Approval</h1>
+                    <p>Review & Approve Repairs</p>
+                    <div class="vehicle-badge">Vehicle: ${vehicle.registration_number}</div>
+                    ${vehicle.brands?.name || vehicle.models?.name ? 
+                        `<p style="margin-top: 10px; font-size: 14px;">${vehicle.brands?.name || ''} ${vehicle.models?.name || ''}</p>` 
+                        : ''}
+                </div>
+
+                <div class="content">
+                    <div class="section">
+                        <div class="section-title">Suggested Repairs</div>
+                        <div class="helper-text">Please select the services you wish to approve.</div>
+                        ${allItems.length === 0 ? '<p style="color: #999;">No repairs to approve.</p>' : ''}
+                        ${allItems.map(item => `
+                            <div class="repair-card ${isSelected(item) ? 'selected' : ''}" 
+                                 onclick="toggleItem('${item.type}', '${item.id}')">
+                                <div class="repair-card-content">
+                                    <div class="checkbox"></div>
+                                    <div class="repair-info">
+                                        <div class="repair-description">${item.description}</div>
+                                        <span class="repair-tag ${item.type === 'complaint' ? 'tag-customer' : 'tag-mechanic'}">
+                                            ${item.label}
+                                        </span>
+                                    </div>
+                                    <div class="repair-price">₹${(item.estimated_cost || 0).toFixed(2)}</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="section">
+                        <div class="section-title">Your Feedback (Optional)</div>
+                        <div class="feedback-box">
+                            <textarea id="feedback" placeholder="Let us know if you have any other comments..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <div class="total-section">
+                            <div class="total-label">Estimated Total</div>
+                            <div class="total-amount">₹<span id="total">0.00</span></div>
+                        </div>
+                    </div>
+
+                    <button class="submit-btn" onclick="submitApproval()">
+                        <span>👍</span>
+                        <span>Submit Approval & Feedback</span>
+                    </button>
+                </div>
+            `;
+
+            document.getElementById('app').innerHTML = html;
+            updateTotal();
+        }
+
+        function isSelected(item) {
+            return item.type === 'complaint' 
+                ? selectedComplaints.has(item.id)
+                : selectedSuggestions.has(item.id);
+        }
+
+        function toggleItem(type, id) {
+            if (type === 'complaint') {
+                if (selectedComplaints.has(id)) {
+                    selectedComplaints.delete(id);
+                } else {
+                    selectedComplaints.add(id);
+                }
+            } else {
+                if (selectedSuggestions.has(id)) {
+                    selectedSuggestions.delete(id);
+                } else {
+                    selectedSuggestions.add(id);
+                }
+            }
+            renderUI();
+        }
+
+        function updateTotal() {
+            let total = 0;
+            jobData.complaints?.forEach(c => {
+                if (selectedComplaints.has(c.id)) {
+                    total += c.estimated_cost || 0;
+                }
+            });
+            jobData.suggestions?.forEach(s => {
+                if (selectedSuggestions.has(s.id)) {
+                    total += s.estimated_cost || 0;
+                }
+            });
+            document.getElementById('total').textContent = total.toFixed(2);
+        }
+
+        async function submitApproval() {
+            if (selectedComplaints.size === 0 && selectedSuggestions.size === 0) {
+                alert('Please select at least one service to approve.');
+                return;
+            }
+
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Submitting...';
+
+            try {
+                // Update complaints
+                for (const complaint of jobData.complaints || []) {
+                    await supabase
+                        .from('complaints')
+                        .update({ is_approved_by_customer: selectedComplaints.has(complaint.id) })
+                        .eq('id', complaint.id);
+                }
+
+                // Update suggestions
+                for (const suggestion of jobData.suggestions || []) {
+                    await supabase
+                        .from('suggestions')
+                        .update({ is_approved_by_customer: selectedSuggestions.has(suggestion.id) })
+                        .eq('id', suggestion.id);
+                }
+
+                // Save feedback
+                const feedback = document.getElementById('feedback').value.trim();
+                if (feedback) {
+                    await supabase
+                        .from('job_cards')
+                        .update({ customer_feedback_text: feedback })
+                        .eq('id', jobCardId);
+                }
+
+                showSuccess();
+            } catch (error) {
+                alert('Error submitting approval: ' + error.message);
+                btn.disabled = false;
+                btn.innerHTML = '<span>👍</span><span>Submit Approval & Feedback</span>';
+            }
+        }
+
+        function showSuccess() {
+            document.getElementById('app').innerHTML = `
+                <div class="header">
+                    <div class="header-icon">🚗</div>
+                    <h1>AutoFix Service Approval</h1>
+                </div>
+                <div class="success">
+                    <div class="success-icon">✅</div>
+                    <h2 style="margin-bottom: 10px;">Thank You!</h2>
+                    <p>Your approval has been submitted successfully. Our team will proceed with the approved services.</p>
+                </div>
+            `;
+        }
+
+        function showError(message) {
+            document.getElementById('app').innerHTML = `
+                <div class="header">
+                    <div class="header-icon">🚗</div>
+                    <h1>AutoFix Service Approval</h1>
+                </div>
+                <div class="error">${message}</div>
+            `;
+        }
+
+        // Load data on page load
+        loadJobData();
+    </script>
+</body>
+</html>
